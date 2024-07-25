@@ -9,16 +9,17 @@
 % including bin size, frequency of collection, budget cuts, etc. 
 %3) compare model results to empirical data
 
-%the "calculatep_2" function calculates the four p's using d
+%the "calculatep_2" function calculates p_litter and p_notlitter using d
 
-Vmax = 2; %keep bin size constant at 2 m^3
-%keep frequency of collection constant at once every 3 days (for Boston)
-%we want to find threshold at which litter generated in 3 days = 2 m^3
+Vmax = 189; costbin = 4000; %test different bin sizes - would need to vary cost accordingly as well
+costmaintenance = 2000;%scale down maintenance costs to the bin level - need to vary maintenance cost and frequency of trash collection together
+%for sensitivity analysis: vary bin size and collection frequency 
 %midday period on a weekday, i.e. 12-2 pm at Harvard Square
 tend = 43200; %30 days * 24 hours * 60 minutes = 43200 minutes
-lower = 20;
-upper = 50; 
-d = 100; %for 100 m between trash receptacles %there are some trash receptacles in around Harvard campus & in Harvard Square area that are > 100 m apart 
+lower = 20; upper = 50; %estimate of # of people passing by a given trash receptacle per minute, uniform distribution 
+budget = 1000000; %hypothetically let's say budget is $1,000,000 USD for maintaining trash in Harvard Square
+sidewalklength = 4000; %4 km of sidewalk total in Harvard Square
+dmax = (sidewalklength*(costbin + costmaintenance))/(budget - (costbin + costmaintenance)); 
 
 %cost function: 
 %choose a maximum annual budget 
@@ -31,13 +32,13 @@ P = zeros(tend,1); V = zeros(tend,1); L = zeros(tend,1); %define matrices for st
 cumulativeV = zeros(tend,1);
 overflow = zeros(tend,1);
 P(1) = 0; V(1) = 0; L(1) = 0; 
-error_tolerance = 1e-5; %for boolean operations to do what we want them to do
-for t = 1:1:tend %assume we start the simulation the day of trash collection day at noon, and that garbage collection was at 8 am
+error_tolerance = 1e-3; %for boolean operations to do what we want them to do
+for t = 2:1:tend %assume we start the simulation the day of trash collection day at noon, and that garbage collection was at 8 am
     %at each timestep, we sum the litter produced per person
     
     rpeople = round(lower + (upper-lower).*rand(1,1)); %pick a random number of people who pass by a given spot on the sidewalk between 20 and 50
     for j = 1:rpeople %for each person
-        dpeople = rand(1,1)*d; %generate a random distance where each person "spawns", i.e. starts at, between 0 m and 100 m
+        dpeople = rand(1,1)*dmax/2; %generate a random distance where each person "spawns", i.e. starts at, between 0 and half of dmax
         r = rand(1,1); %random number for littering probability Monte Carlo
         [p_litter,p_notlitter] = calculatep_2(dpeople);
         if r < p_litter %someone will litter
@@ -45,7 +46,7 @@ for t = 1:1:tend %assume we start the simulation the day of trash collection day
             L(t) = L(t) + 1; %record number of items littered in that minute
         else
             P(t) = P(t) + 1; %record number of people in that minute = random # per minute * total # of minutes (tend) 
-            V(t) = V(t) + 0.1;  %assume a litter item has a volume of 0.1 m^3.
+            V(t) = V(t) + 0.5;  %a plastic water bottle has a volume of 500 mL or 0.5 L 
         end
     end
     cumulativeV(t) = cumulativeV(t-1) + V(t);
@@ -60,14 +61,21 @@ end
 sumoverflow = sum(overflow); %total overflow within a 30 day-period
 %plot the results over time
 
-tiledlayout(1,3); %one row, two columns 
+%motion plots, one after the other - see code in phantom delay car (?) MATLAB
+%file
+
+tiledlayout(2,2); %one row, two columns 
 time = 1:1:tend; 
+
 nexttile %the cumulative volume vs time plot, and plot overflow on same axes
+hold on
 plot(time,cumulativeV)
 plot(time,overflow)
 xlabel('time')
-ylabel('Volume of trash inside receptacle (m^3)')
-title(['Volume vs time for distance between receptacles = ' num2str(d)])
+ylabel('Volume of trash inside and outside receptacle (L)')
+title(['Volume vs time for distance between receptacles = ' num2str(dmax)])
+legend('trash volume','overflow volume')
+hold off
 
 nexttile %plot the number of people per minute vs time plot
 plot(time,P)
@@ -81,3 +89,8 @@ xlabel('time')
 ylabel('Litter (items)')
 title(['Litter items generated per minute over a ' num2str(tend) 'day period'])
 
+nexttile %plot the amount of overflow trash per minute
+plot(time,overflow)
+xlabel('time')
+ylabel('Overflow (items)')
+title(['Overflow items generated per minute over a ' num2str(tend) 'day period'])

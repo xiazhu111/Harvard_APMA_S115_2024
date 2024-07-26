@@ -30,7 +30,7 @@ dmax = (sidewalklength*(costbin + costmaintenance))/(budget - (costbin + costmai
 
 P = zeros(tend,1); V = zeros(tend,1); L = zeros(tend,1); %define matrices for storing people, trash volume, and litter items per minute
 cumulativeV = zeros(tend,1);
-overflow = zeros(tend,1); cumulativeoverflow = zeros(tend,1); 
+overflow = zeros(tend,1); cumulativeoverflow = zeros(tend,1); cumulativeL = zeros(tend,1);
 P(1) = 0; V(1) = 0; L(1) = 0; 
 error_tolerance = 1e-5; %for boolean operations to do what we want them to do
 for t = 2:1:tend %assume we start the simulation the day of trash collection day at noon, and that garbage collection was at 8 am
@@ -50,13 +50,15 @@ for t = 2:1:tend %assume we start the simulation the day of trash collection day
         end
     cumulativeV(t) = cumulativeV(t-1) + V(t);
     end
+
+    if cumulativeV(t) > Vmax
+        overflow(t) = cumulativeV(t) - Vmax; 
+    end 
     if (mod(t,2640)-0) < error_tolerance %start at noon; 24 hours + 20 hours until 8 am of 3rd day. 44 hours * 60 = 2640 min
-        if cumulativeV(t) > Vmax
-            overflow(t) = cumulativeV(t)-Vmax; %assume all overflow ends up in the environment
-        end
         cumulativeV(t) = 0; %empty the trash receptacle. When next for loop iteration starts, this will become the previous state
     end
     cumulativeoverflow(t) = cumulativeoverflow(t-1) + overflow(t);
+    cumulativeL(t) = cumulativeL(t-1) + L(t); 
 end 
 
 sumoverflow = sum(overflow); %total overflow within a 30 day-period
@@ -78,17 +80,30 @@ title(['Volume vs time for distance between receptacles = ' num2str(dmax)])
 legend('trash volume','overflow volume')
 hold off
 
-nexttile %plot the number of people per minute vs time plot
-plot(time,P)
+nexttile %the cumulative volume vs time plot, and plot overflow on same axes
+hold on
+plot(time,cumulativeV)
+plot(time,cumulativeoverflow)
 xlabel('time')
-ylabel('People')
-title(['Number of people per minute over a ' num2str(tend) 'day period'])
+ylabel('Volume of trash inside and outside receptacle (L)')
+title(['Volume vs time for distance between receptacles = ' num2str(dmax)])
+legend('trash volume','overflow volume')
+axis([0 tend 10^4 5*10^4])
+hold off
+%nexttile %plot the number of people per minute vs time plot
+%plot(time,P)
+%xlabel('time')
+%ylabel('People')
+%title(['Number of people per minute over a ' num2str(tend) 'day period'])
 
 nexttile %plot the number of litter items per minute vs time
+hold on
 plot(time,L)
+plot(time,cumulativeL)
 xlabel('time')
 ylabel('Litter (items)')
 title(['Litter items generated per minute over a ' num2str(tend) 'day period'])
+hold off 
 
 nexttile %plot the amount of overflow trash per minute
 plot(time,overflow)

@@ -3,20 +3,21 @@
 %Harvard Square
 
 %the "calculatep_2" function calculates p_litter and p_notlitter using d
+%for sensitivity analysis: vary budget, bin size, and collection frequency 
 
 Vmax = 189; costmaintenance = 60; %test different bin sizes - would need to vary cost accordingly as well
 costcollection = 2400;%scale down maintenance costs to the bin level - need to vary maintenance cost and frequency of trash collection together
-%for sensitivity analysis: vary bin size and collection frequency 
+
 %midday period on a weekday, i.e. 12-2 pm at Harvard Square
 tend = 43200; %30 days * 24 hours * 60 minutes = 43200 minutes
 lower = 5; upper = 10; %estimate of # of people passing by a given trash receptacle per minute, uniform distribution 
-budget = 465000; %hypothetically let's say budget is $1,000,000 USD for maintaining trash in Harvard Square
-sidewalklength = 6116; %4 km of sidewalk total in Harvard Square
-dmax = (sidewalklength*(costmaintenance + costcollection))/(0.69*budget - (costmaintenance + costcollection)); 
-binnumber = round(sidewalklength/dmax + 1);
+budget = 465000; %budget of $465,000 USD per month for solid waste
+sidewalklength = 6116; %6.116 km of sidewalk total in Harvard Square, estimated using Google Maps
 
 %solid waste collection for Cambridge for 2023: 69% of solid waste budget
 %cleanup for Cambridge for 2023: 31% of solid waste budget
+dmax = (sidewalklength*(costmaintenance + costcollection))/(0.69*budget - (costmaintenance + costcollection)); 
+binnumber = round(sidewalklength/dmax + 1);
 
 %cost function: 
 %choose a maximum annual budget 
@@ -37,9 +38,9 @@ for t = 2:1:tend %assume we start the simulation the day of trash collection day
     for j = 1:rpeople %for each person
         dpeople = rand(1,1)*dmax/2; %generate a random distance where each person "spawns", i.e. starts at, between 0 and half of dmax
         r = rand(1,1); %random number for littering probability Monte Carlo
-        r2 = rand(1,1); %random number for whether person has a piece of litter or not
+        r2 = rand(1,1); %random number for whether person has a piece of trash or not
         [p_litter,p_notlitter] = calculatep_2(dpeople);
-        if r2 < 0.1
+        if r2 < 0.1 %10% change of someone having a piece of trash
             if r < p_litter %someone will litter
                 P(t) = P(t) + 1;
                 L(t) = L(t) + 1; %record number of items littered in that minute

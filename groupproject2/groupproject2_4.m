@@ -4,7 +4,7 @@
 
 %the "calculatep_2" function calculates p_litter and p_notlitter using d
 
-Vmax = 1000; costmaintenance = 60; %test different bin sizes - would need to vary cost accordingly as well
+Vmax = 189; costmaintenance = 60; %test different bin sizes - would need to vary cost accordingly as well
 costcollection = 2400;%scale down maintenance costs to the bin level - need to vary maintenance cost and frequency of trash collection together
 %for sensitivity analysis: vary bin size and collection frequency 
 %midday period on a weekday, i.e. 12-2 pm at Harvard Square
@@ -13,6 +13,7 @@ lower = 5; upper = 10; %estimate of # of people passing by a given trash recepta
 budget = 465000; %hypothetically let's say budget is $1,000,000 USD for maintaining trash in Harvard Square
 sidewalklength = 6116; %4 km of sidewalk total in Harvard Square
 dmax = (sidewalklength*(costmaintenance + costcollection))/(0.69*budget - (costmaintenance + costcollection)); 
+binnumber = round(sidewalklength/dmax + 1);
 
 %solid waste collection for Cambridge for 2023: 69% of solid waste budget
 %cleanup for Cambridge for 2023: 31% of solid waste budget
@@ -59,15 +60,15 @@ for t = 2:1:tend %assume we start the simulation the day of trash collection day
     cumulativeL(t) = cumulativeL(t-1) + L(t); 
 end 
 
-sumoverflow = cumulativeoverflow(tend)/0.5; %total # of overflow items within a 30 day-period = total overflow volume/0.5 L
-totalL = cumulativeL(tend); 
+sumoverflow = cumulativeoverflow(tend)/0.5*binnumber; %total # of overflow items within a 30 day-period = total overflow volume/0.5 L
+totalL = cumulativeL(tend)*binnumber; 
 %plot the results over time
 
 %motion plots, one after the other - see code in phantom delay car (?) MATLAB
 %file
 
 %each piece of litter costs $0.349 USD to clean up. 
-remainingbudget = 0.31*budget - 0.349*(sumoverflow + cumulativeL(tend)); 
+remainingbudget = 0.31*budget - 0.349*(sumoverflow + cumulativeL(tend))*binnumber; 
 
 figure(1)
 tiledlayout(2,2); %one row, two columns 

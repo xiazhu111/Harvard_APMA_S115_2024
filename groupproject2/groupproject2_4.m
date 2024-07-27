@@ -2,16 +2,9 @@
 %Optimizing distance between public trash receptacles on sidewalks in
 %Harvard Square
 
-%Objectives of this project: 
-%1) determine minimum achievable amount of littering while taking costs of
-%operation into consideration
-%2) explore the phenomenon of overflowing trash receptacles and what factors influence this issue,
-% including bin size, frequency of collection, budget cuts, etc. 
-%3) compare model results to empirical data
-
 %the "calculatep_2" function calculates p_litter and p_notlitter using d
 
-Vmax = 500; costmaintenance = 60; %test different bin sizes - would need to vary cost accordingly as well
+Vmax = 1000; costmaintenance = 60; %test different bin sizes - would need to vary cost accordingly as well
 costcollection = 2400;%scale down maintenance costs to the bin level - need to vary maintenance cost and frequency of trash collection together
 %for sensitivity analysis: vary bin size and collection frequency 
 %midday period on a weekday, i.e. 12-2 pm at Harvard Square
@@ -67,6 +60,7 @@ for t = 2:1:tend %assume we start the simulation the day of trash collection day
 end 
 
 sumoverflow = cumulativeoverflow(tend)/0.5; %total # of overflow items within a 30 day-period = total overflow volume/0.5 L
+totalL = cumulativeL(tend); 
 %plot the results over time
 
 %motion plots, one after the other - see code in phantom delay car (?) MATLAB

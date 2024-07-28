@@ -5,7 +5,7 @@
 %the "calculatep_2" function calculates p_litter and p_notlitter using d
 %for sensitivity analysis: vary budget, bin size, and collection frequency 
 
-Vmax = 189; costmaintenance = 60; %test different bin sizes - would need to vary cost accordingly as well
+Vmax = 1000; costmaintenance = 150; %test different bin sizes - would need to vary cost accordingly as well
 costcollection = 2400;%scale down maintenance costs to the bin level - need to vary maintenance cost and frequency of trash collection together
 
 %midday period on a weekday, i.e. 12-2 pm at Harvard Square
@@ -26,53 +26,79 @@ binnumber = round(sidewalklength/dmax + 1);
 %by this number to get # bins
 %cost per bin * # of bins + work hours*wage*# workers - compare with max budget to determine threshold bin density the city can afford
 
-P = zeros(tend,1); V = zeros(tend,1); L = zeros(tend,1); %define matrices for storing people, trash volume, and litter items per minute
-cumulativeV = zeros(tend,1);
-overflow = zeros(tend,1); cumulativeoverflow = zeros(tend,1); cumulativeL = zeros(tend,1);
-P(1) = 0; V(1) = 0; L(1) = 0; 
-error_tolerance = 1e-5; %for boolean operations to do what we want them to do
-for t = 2:1:tend %assume we start the simulation the day of trash collection day at noon, and that garbage collection was at 8 am
-    %at each timestep, we sum the litter produced per person
+simulations = 10000; %number of Monte Carlo simulations 
+litter_all = zeros(simulations,1); overflow_all = zeros(simulations,1); remainingbudget_all = zeros(simulations,1); 
+
+for z=1:simulations
+    P = zeros(tend,1); V = zeros(tend,1); L = zeros(tend,1); %define matrices for storing people, trash volume, and litter items per minute
+    cumulativeV = zeros(tend,1);
+    overflow = zeros(tend,1); cumulativeoverflow = zeros(tend,1); cumulativeL = zeros(tend,1);
+    P(1) = 0; V(1) = 0; L(1) = 0; 
+    error_tolerance = 1e-5; %for boolean operations to do what we want them to do
+    for t = 2:1:tend %assume we start the simulation the day of trash collection day at noon, and that garbage collection was at 8 am
+        %at each timestep, we sum the litter produced per person
     
-    rpeople = round(lower + (upper-lower).*rand(1,1)); %pick a random number of people who pass by a given spot on the sidewalk between 20 and 50
-    for j = 1:rpeople %for each person
-        dpeople = rand(1,1)*dmax/2; %generate a random distance where each person "spawns", i.e. starts at, between 0 and half of dmax
-        r = rand(1,1); %random number for littering probability Monte Carlo
-        r2 = rand(1,1); %random number for whether person has a piece of trash or not
-        [p_litter,p_notlitter] = calculatep_2(dpeople);
-        if r2 < 0.1 %10% change of someone having a piece of trash
-            if r < p_litter %someone will litter
-                P(t) = P(t) + 1;
-                L(t) = L(t) + 1; %record number of items littered in that minute
-            else
-                P(t) = P(t) + 1; %record number of people in that minute = random # per minute * total # of minutes (tend) 
-                V(t) = V(t) + 0.5;  %a plastic water bottle has a volume of 500 mL or 0.5 L 
-            end
-        end 
-    cumulativeV(t) = cumulativeV(t-1) + V(t);
-    end
-    if cumulativeV(t) > Vmax
+        rpeople = round(lower + (upper-lower).*rand(1,1)); %pick a random number of people who pass by a given spot on the sidewalk between 20 and 50
+        for j = 1:rpeople %for each person
+            dpeople = rand(1,1)*dmax/2; %generate a random distance where each person "spawns", i.e. starts at, between 0 and half of dmax
+            r = rand(1,1); %random number for littering probability Monte Carlo
+            r2 = rand(1,1); %random number for whether person has a piece of trash or not
+            p_litter = calculatep_2(dpeople);
+            if r2 < 0.1 %10% change of someone having a piece of trash
+                if r < p_litter %someone will litter
+                    P(t) = P(t) + 1;
+                    L(t) = L(t) + 1; %record number of items littered in that minute
+                else
+                    P(t) = P(t) + 1; %record number of people in that minute = random # per minute * total # of minutes (tend) 
+                    V(t) = V(t) + 0.5;  %a plastic water bottle has a volume of 500 mL or 0.5 L 
+                end
+            end 
+        cumulativeV(t) = cumulativeV(t-1) + V(t);
+        end
+        if cumulativeV(t) > Vmax
             overflow(t) = cumulativeV(t)-Vmax; %assume all overflow ends up in the environment
         end
-    if (mod(t,2640)-0) < error_tolerance %start at noon; 24 hours + 20 hours until 8 am of 3rd day. 44 hours * 60 = 2640 min
-        cumulativeV(t) = 0; %empty the trash receptacle. When next for loop iteration starts, this will become the previous state
-    end
-    cumulativeoverflow(t) = cumulativeoverflow(t-1) + overflow(t);
-    cumulativeL(t) = cumulativeL(t-1) + L(t); 
-end 
+        if (mod(t,720)-0) < error_tolerance %trash bins are emptied twice a day on weekdays in Harvard Square = 12 hours between trash emptying = 720 minutes
+            cumulativeV(t) = 0; %empty the trash receptacle. When next for loop iteration starts, this will become the previous state
+        end
+        cumulativeoverflow(t) = cumulativeoverflow(t-1) + overflow(t);
+        cumulativeL(t) = cumulativeL(t-1) + L(t); 
+    end 
 
-sumoverflow = cumulativeoverflow(tend)/0.5*binnumber; %total # of overflow items within a 30 day-period = total overflow volume/0.5 L
-totalL = cumulativeL(tend)*binnumber; 
-%plot the results over time
+    overflow_all(z) = cumulativeoverflow(tend)/0.5*binnumber; %total # of overflow items within a 30 day-period = total overflow volume/0.5 L
+    litter_all(z) = cumulativeL(tend)*binnumber; 
 
-%motion plots, one after the other - see code in phantom delay car (?) MATLAB
-%file
+    %each piece of litter costs $0.349 USD to clean up. 
+    remainingbudget_all(z) = 0.31*budget - 0.349*(overflow_all(z) + litter_all(z)); 
+end
 
-%each piece of litter costs $0.349 USD to clean up. 
-remainingbudget = 0.31*budget - 0.349*(sumoverflow + cumulativeL(tend))*binnumber; 
+%plot histograms of total litter produced, total trash overflow, remaining
+%budget after 30-day period 
+figure(1), hold on
+tiledlayout(3,1) %three rows, 1 column
+nexttile
+histogram(overflow_all)
+title('Overflow in Harvard Square after a 30-day period')
+xlabel('overflow (items)')
+ylabel('frequency')
 
-figure(1)
-tiledlayout(2,2); %one row, two columns 
+nexttile
+histogram(litter_all)
+title('Litter in Harvard Square after a 30-day period')
+xlabel('litter (items)')
+ylabel('frequency')
+
+nexttile
+histogram(remainingbudget_all)
+title('Remaining budget')
+xlabel('remaining budget ($)')
+ylabel('frequency')
+
+hold off 
+
+%plot the results over time - for the 10,000th Monte Carlo simulation 
+figure(2)
+tiledlayout(2,2); %two rows, two columns 
 time = 1:1:tend; 
 
 nexttile %the cumulative volume vs time plot, and plot overflow on same axes
@@ -106,16 +132,29 @@ plot(time,L)
 plot(time,cumulativeL)
 xlabel('time')
 ylabel('Litter (items)')
-title(['Litter items generated per minute over a ' num2str(tend) 'day period'])
+title(['Litter items generated per minute over a 30 day period'])
 hold off 
 
 nexttile %plot the amount of overflow trash per minute
 plot(time,overflow)
+plot(time,cumulativeoverflow)
 xlabel('time')
 ylabel('Overflow (items)')
-title(['Overflow items generated per minute over a ' num2str(tend) 'day period'])
+title(['Cumulative overflow over a 30 day period'])
 
-figure(2), hold on
+figure(3), hold on
 plot(time,V)
 ylabel('trash')
 xlabel('time')
+
+%cumulative overflow only
+plot(time,cumulativeL)
+xlabel('time')
+ylabel('Litter (items)')
+title('Litter items generated per minute over a 30 day period')
+
+%cumulative litter only
+plot(time,cumulativeoverflow)
+xlabel('time')
+ylabel('Overflow (items)')
+title('Cumulative overflow over a 30 day period')

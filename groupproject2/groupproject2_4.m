@@ -5,8 +5,10 @@
 %the "calculatep_2" function calculates p_litter and p_notlitter using d
 %for sensitivity analysis: vary budget, bin size, and collection frequency 
 
-Vmax = 1000; costmaintenance = 150; %test different bin sizes - would need to vary cost accordingly as well
+Vmax = 189; costmaintenance = 60; %test different bin sizes - would need to vary cost accordingly as well
 costcollection = 2400;%scale down maintenance costs to the bin level - need to vary maintenance cost and frequency of trash collection together
+costbin = 2000;
+time = 1:1:tend; 
 
 %midday period on a weekday, i.e. 12-2 pm at Harvard Square
 tend = 43200; %30 days * 24 hours * 60 minutes = 43200 minutes
@@ -16,8 +18,10 @@ sidewalklength = 6116; %6.116 km of sidewalk total in Harvard Square, estimated 
 
 %solid waste collection for Cambridge for 2023: 69% of solid waste budget
 %cleanup for Cambridge for 2023: 31% of solid waste budget
-dmax = (sidewalklength*(costmaintenance + costcollection))/(0.69*budget - (costmaintenance + costcollection)); 
-binnumber = round(sidewalklength/dmax + 1);
+binnumber = (budget*0.69)/(costbin + costmaintenance + costcollection);
+dmax = sidewalklength/(binnumber + 1);
+%dmax = (sidewalklength*(costmaintenance + costcollection))/(0.69*budget - (costmaintenance + costcollection)); 
+%binnumber = round(sidewalklength/dmax + 1);
 
 %cost function: 
 %choose a maximum annual budget 
@@ -26,9 +30,11 @@ binnumber = round(sidewalklength/dmax + 1);
 %by this number to get # bins
 %cost per bin * # of bins + work hours*wage*# workers - compare with max budget to determine threshold bin density the city can afford
 
-simulations = 10000; %number of Monte Carlo simulations 
+simulations = 1000; %number of Monte Carlo simulations 
 litter_all = zeros(simulations,1); overflow_all = zeros(simulations,1); remainingbudget_all = zeros(simulations,1); 
 
+figure(1);
+hold on
 for z=1:simulations
     P = zeros(tend,1); V = zeros(tend,1); L = zeros(tend,1); %define matrices for storing people, trash volume, and litter items per minute
     cumulativeV = zeros(tend,1);
@@ -70,11 +76,29 @@ for z=1:simulations
 
     %each piece of litter costs $0.349 USD to clean up. 
     remainingbudget_all(z) = 0.31*budget - 0.349*(overflow_all(z) + litter_all(z)); 
+
+    %cumulative litter only, n=1000 lines together
+    plot(time,cumulativeL)
+    xlabel('time')
+    ylabel('Litter (items)')
+    title('Litter items generated per minute over a 30 day period')
+
+    %cumulative overflow only, n=1000 lines together
+    %plot(time,cumulativeoverflow)
+    %xlabel('time')
+    %ylabel('Overflow (items)')
+    %title('Cumulative overflow over a 30 day period')
 end
+hold off
+
+%print the end results
+median(overflow_all)
+median(litter_all)
+median(remainingbudget_all)
 
 %plot histograms of total litter produced, total trash overflow, remaining
 %budget after 30-day period 
-figure(1), hold on
+figure(2), hold on
 tiledlayout(3,1) %three rows, 1 column
 nexttile
 histogram(overflow_all)
@@ -96,10 +120,9 @@ ylabel('frequency')
 
 hold off 
 
-%plot the results over time - for the 10,000th Monte Carlo simulation 
-figure(2)
+%plot the results over time - for the 1000th Monte Carlo simulation 
+figure(3)
 tiledlayout(2,2); %two rows, two columns 
-time = 1:1:tend; 
 
 nexttile %the cumulative volume vs time plot, and plot overflow on same axes
 hold on
@@ -142,18 +165,20 @@ xlabel('time')
 ylabel('Overflow (items)')
 title(['Cumulative overflow over a 30 day period'])
 
-figure(3), hold on
+figure(4), hold on
 plot(time,V)
 ylabel('trash')
 xlabel('time')
 
-%cumulative overflow only
+%cumulative litter only
+figure(5)
 plot(time,cumulativeL)
 xlabel('time')
 ylabel('Litter (items)')
 title('Litter items generated per minute over a 30 day period')
 
-%cumulative litter only
+%cumulative overflow only
+figure(6)
 plot(time,cumulativeoverflow)
 xlabel('time')
 ylabel('Overflow (items)')
